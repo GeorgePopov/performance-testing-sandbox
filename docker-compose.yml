@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Наша база данных. Сюда Java-приложение будет записывать результаты
+  postgres:
+    image: postgres:15
+    container_name: my_postgres
+    ports:
+      - "5432:5432" # Открываем порт наружу, чтобы Java могла подключиться
+    environment:
+      POSTGRES_USER: user        # Логин для подключения
+      POSTGRES_PASSWORD: password  # Пароль
+      POSTGRES_DB: performance_db # Название базы данных
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Чтобы данные не удалялись при перезапуске
+
+  # Системный компонент для работы Kafka (координатор)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: my_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  # Брокер сообщений Kafka. Сюда будут сыпаться запросы на обработку
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: my_kafka
+    depends_on:
+      - zookeeper # Кафка не запустится, пока не готов Zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # Grafana — красивый визуализатор, где мы будем смотреть на графики
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: my_grafana
+    ports:
+      - "3000:3000" # Графики будут доступны в браузере по адресу localhost:3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Пароль для входа в панель управления
+
+volumes:
+  postgres_data:
