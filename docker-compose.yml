@@ -37,14 +37,57 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
+  # --- PROMETHEUS (Сборщик метрик) ---
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: my_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - postgres
+
   # Grafana — красивый визуализатор, где мы будем смотреть на графики
   grafana:
     image: grafana/grafana:10.0.0
     container_name: my_grafana
     ports:
-      - "3000:3000" # Графики будут доступны в браузере по адресу localhost:3000
+      - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin # Пароль для входа в панель управления
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_storage:/var/lib/grafana
+      # Добавляем автоматическую загрузку конфигов и дашбордов из папки проекта:
+      - ./grafana/provisioning:/etc/grafana/provisioning
 
+  # --- POSTGRES EXPORTER (Сборщик метрик БД) ---
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: my_postgres_exporter
+    ports:
+      - "9187:9187"
+    environment:
+      # ИСПРАВЛЕНО: Подставляем ТВОИ реальные логин, пароль и имя базы из блока postgres
+      DATA_SOURCE_NAME: "postgresql://user:password@postgres:5432/performance_db?sslmode=disable"
+      PG_EXPORTER_EXTEND_QUERY_DATA: "true"
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: "true"
+    depends_on:
+      - postgres
+
+  # --- INFLUXDB (Специальное хранилище для метрик JMeter) ---
+  influxdb:
+    image: influxdb:1.8.10
+    container_name: my_influxdb
+    ports:
+      - "8086:8086" # Порт, куда JMeter будет отправлять данные
+    environment:
+      - INFLUXDB_DB=jmeter # Автоматически создать базу данных с именем jmeter
+    volumes:
+      - influxdb_storage:/var/lib/influxdb
+
+# В самый-самый конец файла, где у тебя описаны volumes, добавь volume для Графаны:
 volumes:
   postgres_data:
+  grafana_storage:
+  influxdb_storage:

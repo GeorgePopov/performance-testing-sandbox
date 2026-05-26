@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://my_prometheus:9090
+    isDefault: true
+
+  - name: jmeter
+    type: influxdb
+    access: proxy
+    url: http://my_influxdb:8086
+    database: jmeter
+    jsonData:
+      httpMode: GET
